@@ -1,5 +1,16 @@
 #include <stm32f031x6.h>
 #include "display.h"
+#include "sound.h"
+#include "musical_notes.h"
+
+uint32_t *background_tune_notes;
+uint32_t *background_tune_times;
+uint32_t background_tune_note_count;
+uint32_t background_repeat_tune;
+
+const uint32_t my_notes[]={A4,C3,B5,D3,F2};
+const uint32_t my_note_times[]={200,100,300,200,500};
+
 void initClock(void);
 void initSysTick(void);
 void SysTick_Handler(void);
@@ -8,6 +19,8 @@ void setupIO();
 int isInside(uint16_t x1, uint16_t y1, uint16_t w, uint16_t h, uint16_t px, uint16_t py);
 void enablePullUp(GPIO_TypeDef *Port, uint32_t BitNumber);
 void pinMode(GPIO_TypeDef *Port, uint32_t BitNumber, uint32_t Mode);
+void hitPose(const uint16_t []);
+void changeHearts(const uint16_t []);
 
 volatile uint32_t milliseconds;
 
@@ -89,6 +102,31 @@ const uint16_t heartsflash[] = {
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,0,0,0,65535,0,0,0,0,0,65535,0,0,0,65535,0,0,0,0,0,65535,0,0,0,65535,0,0,0,0,0,0,0,65535,65535,0,65535,65535,0,0,0,0,0,65535,65535,0,0,65535,0,0,0,0,0,65535,65535,0,65535,65535,0,0,0,0,0,0,65535,65535,65535,0,65535,65535,65535,0,0,0,65535,65535,65535,0,65535,65535,65535,0,0,0,65535,65535,65535,0,65535,65535,65535,0,0,0,0,0,65535,65535,0,0,65535,65535,65535,0,0,0,65535,65535,65535,0,65535,65535,65535,0,0,0,65535,65535,0,0,65535,65535,65535,0,0,0,0,0,0,65535,0,65535,65535,65535,0,0,0,0,0,65535,0,65535,65535,65535,0,0,0,0,0,65535,0,65535,65535,65535,0,0,0,0,0,0,0,0,0,65535,65535,0,0,0,0,0,0,0,0,65535,65535,0,0,0,0,0,0,0,0,65535,65535,0,0,0,0,0,0,0,0,0,0,65535,0,0,0,0,0,0,0,0,0,65535,0,0,0,0,0,0,0,0,0,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
 
+const uint16_t outLeft[] = {
+	0,0,0,65535,0,0,0,0,0,0,65535,0,0,0,0,0,0,65535,0,0,65535,65535,65535,65535,65535,0,0,0,0,0,0,0,65535,0,0,0,0,0,0,0,0,65535,0,0,65535,65535,65535,65535,0,0,65535,0,0,0,0,0,0,0,0,65535,0,0,0,0,
+};
+
+const uint16_t outUp[] = {
+	0,0,0,65535,65535,0,0,0,0,0,65535,0,0,65535,0,0,0,65535,0,0,0,0,65535,0,65535,0,0,0,0,0,0,65535,0,0,65535,0,0,65535,0,0,0,0,65535,0,0,65535,0,0,0,0,65535,0,0,65535,0,0,0,0,65535,0,0,65535,0,0,
+};
+
+
+const uint16_t arLeft[] = {
+	0,0,0,40224,0,0,0,0,0,0,40224,40224,0,0,0,0,0,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,0,40224,40224,40224,40224,40224,40224,40224,0,0,40224,40224,0,0,0,0,0,0,0,40224,0,0,0,0,
+};
+
+const uint16_t arRight[] = {
+	0,0,0,0,1994,0,0,0,0,0,0,0,1994,1994,0,0,1994,1994,1994,1994,1994,1994,1994,0,1994,1994,1994,1994,1994,1994,1994,1994,1994,1994,1994,1994,1994,1994,1994,1994,1994,1994,1994,1994,1994,1994,1994,0,0,0,0,0,1994,1994,0,0,0,0,0,0,1994,0,0,0,
+};
+
+const uint16_t arUp[] = {
+	0,0,0,9293,9293,0,0,0,0,0,9293,9293,9293,9293,0,0,0,9293,9293,9293,9293,9293,9293,0,9293,9293,9293,9293,9293,9293,9293,9293,0,0,9293,9293,9293,9293,0,0,0,0,9293,9293,9293,9293,0,0,0,0,9293,9293,9293,9293,0,0,0,0,9293,9293,9293,9293,0,0,
+};
+
+const uint16_t arDown[] = {
+	0,0,65315,65315,65315,65315,0,0,0,0,65315,65315,65315,65315,0,0,0,0,65315,65315,65315,65315,0,0,0,0,65315,65315,65315,65315,0,0,65315,65315,65315,65315,65315,65315,65315,65315,0,65315,65315,65315,65315,65315,65315,0,0,0,65315,65315,65315,65315,0,0,0,0,0,65315,65315,0,0,0,
+};
+
 
 int main()
 {
@@ -98,7 +136,7 @@ int main()
 	int hmoved = 0;
 	int vmoved = 0;
 	uint16_t x = 50;
-	uint16_t y = 50;
+	uint16_t y = 110;
 	uint16_t oldx = x;
 	uint16_t oldy = y;
 	initClock();
@@ -106,22 +144,34 @@ int main()
 	setupIO();
 	//putImage(20,80,12,16,dg1,0,0);
 
+	//logic for left arrow location for isInside function
+	uint16_t leftX = 5;
+	uint16_t upX = 30;
+	uint16_t rightX = 90;
+	uint16_t downX = 110;
+	uint16_t allY = 0;
+
 	
 
 
 	int gameStart = 0;
 	int menu = 0;
 	int mode = 0;
+	int hearts = 3;
+	int newY = y;
 
 
 	//main menu title text
 	printTextX2("DANCE ", 0, 0, RGBToWord(0xff,0,0), 0);
+	playNote(A4);
 	delay(300);
 	printTextX2("DANCE", 70, 0, RGBToWord(0,0xff,0), 0);
-	delay(800);
+	playNote(A4);
+	delay(600);
 	printText("RETRO", 50, 15, RGBToWord(0xff,0xff,0), 0);
+	playNote(C3);
 	
-	delay(1000);
+	delay(800);
 	menu = 1;
 
 	printText("1 Player", 35, 100, RGBToWord(0xff, 0xff, 0xff), 0);
@@ -138,12 +188,12 @@ int main()
 		if ((GPIOB->IDR & (1 << 4))==0){ //right press
 			if(mode == 0){
 				mode = 1;
-				printText("2 Player", 35, 100, RGBToWord(0xff, 0xff, 0), 0);
+				printText("2 Player", 35, 100, RGBToWord(0xff, 0xff, 0xff), 0);
 				delay(400);
 			}
 			else{
 				mode = 0;
-				printText("1 Player", 35, 100, RGBToWord(0xff, 0xff, 0), 0);
+				printText("1 Player", 35, 100, RGBToWord(0xff, 0xff, 0xff), 0);
 				delay(400);
 			}
 		}
@@ -151,12 +201,12 @@ int main()
 		if ((GPIOB->IDR & (1 << 5))==0){ // left press
 			if(mode == 0){
 				mode = 1;
-				printTextX2("2 Player", 20, 80, RGBToWord(0xff, 0xff, 0), 0);
+				printText("2 Player", 20, 80, RGBToWord(0xff, 0xff, 0xff), 0);
 				delay(400);
 			}
 			else{
 				mode = 0;
-				printTextX2("1 Player", 20, 80, RGBToWord(0xff, 0xff, 0), 0);
+				printText("1 Player", 20, 80, RGBToWord(0xff, 0xff, 0xff), 0);
 				delay(400);
 			}
 		}
@@ -168,10 +218,24 @@ int main()
 				delay(500);
 		
 				delay(500);
-				gameStart = 1;
-				fillRectangle(0, 0, 200, 200, 0);
+				gameStart = 1;	//start the game logic
+				fillRectangle(0, 0, 200, 200, 0); //clears the screen
+				delay(400);
+				changeHearts(heartsfull); //display our players hearts
+
+				//start our music once the game starts
 				delay(500);
-				putImage(50, 90, 32, 16, heartsfull, 0, 0);
+				initSound();
+				background_tune_notes=my_notes;
+				background_tune_times=my_note_times;
+				background_tune_note_count=5;
+				background_repeat_tune=1;
+				
+				//display our empty arrows to warn user which key they will have to press
+				putImage(5, 0, 8, 8, outLeft, 0, 0);
+				putImage(30, 0, 8, 8, outUp, 0, 0);
+				putImage(90, 0, 8, 8, outLeft, 1, 0);
+				putImage(110, 0, 8, 8, outUp, 0, 1);
 			}
 		} // up pressed
 
@@ -185,62 +249,62 @@ int main()
 		putImage(50, 50, 32, 32, neutral, 0, 0);
 		delay(300);
 		putImage(50, 50, 32, 32, bounce, 0, 0);
+		vmoved= 0;
+
+		putImage(5, 0, 8, 8, outLeft, 0, 0);
+		putImage(30, 0, 8, 8, outUp, 0, 0);
+		putImage(90, 0, 8, 8, outLeft, 1, 0);
+		putImage(110, 0, 8, 8, outUp, 0, 1);
+
+		fillRectangle(10, 20, 50, 50, 0);
 
 		
 
 		if ((GPIOB->IDR & (1 << 4))==0) // right pressed
 		{					
-			delay(100);
-			fillRectangle(50,50,32,32,0);
-			putImage(50, 50, 32, 32, right, 0, 0);
-			delay(300);			
+			hitPose(right);		
 		}
 		if ((GPIOB->IDR & (1 << 5))==0) // left pressed
 		{
-			delay(100);
-			fillRectangle(50,50,32,32,0);			
-			putImage(50, 50, 32, 32, left, 0, 0);
-			delay(300);					
+			if (isInside(leftX,allY,8,8,leftX,newY) || isInside(leftX,allY,8,8,leftX+8,newY) || isInside(leftX,allY,8,8,x,newY+8) || isInside(leftX,allY,8,8,leftX+8,newY+8) )
+			{
+				hitPose(left);
+				printTextX2("NICE", 40, 120, RGBToWord(0xff,0xff,0xff), 0);
+				delay(300);
+				fillRectangle(40, 110, 50, 40, 0);
+				
+			}
+			else{
+				hitPose(fail);
+			}				
 		}
 		if ( (GPIOA->IDR & (1 << 11)) == 0) // down pressed
 		{
-			delay(100);
-			fillRectangle(50,50,32,32,0);
-			putImage(50, 50, 32, 32, down, 0, 0);
-			delay(300);
+			hitPose(down);
 		}
 		if ( (GPIOA->IDR & (1 << 8)) == 0) // up pressed
 		{			
-			delay(100);
-			fillRectangle(50,50,32,32,0);
-			putImage(50, 50, 32, 32, up, 0, 0);
-			delay(300);	
+			hitPose(up);
 		}
 
+		putImage(leftX, newY, 8, 8, arLeft, 0, 0);
+		newY = newY -5;
 		
-		if ((vmoved) || (hmoved))
+		vmoved = 1;
+		delay(100);
+
+		if (vmoved)
 		{
 			// only redraw if there has been some movement (reduces flicker)
-			fillRectangle(oldx,oldy,12,16,0);
-			oldx = x;
-			oldy = y;					
-			if (hmoved)
-			{
-				if (toggle)
-					putImage(x,y,12,16,deco1,hinverted,0);
-				else
-					putImage(x,y,12,16,deco2,hinverted,0);
-				
-				toggle = toggle ^ 1;
-			}
-			else
-			{
-				putImage(x,y,12,16,deco3,0,vinverted);
-			}
+			fillRectangle(leftX,oldy,8,8,0);
+			oldx = leftX;
+			oldy = newY;					
+			putImage(leftX, newY, 8, 8, arLeft, 0, 0);
+			
 			// Now check for an overlap by checking to see if ANY of the 4 corners of deco are within the target area
-			if (isInside(20,80,12,16,x,y) || isInside(20,80,12,16,x+12,y) || isInside(20,80,12,16,x,y+16) || isInside(20,80,12,16,x+12,y+16) )
+			if (isInside(leftX,allY,8,8,leftX,newY) || isInside(leftX,allY,8,8,leftX+8,newY) || isInside(leftX,allY,8,8,x,newY+8) || isInside(leftX,allY,8,8,leftX+8,newY+8) )
 			{
-				printTextX2("GLUG!", 10, 20, RGBToWord(0xff,0xff,0), 0);
+				printTextX2("now!", 10, 20, RGBToWord(0xff,0xff,0), 0);
 				
 			}
 		}		
@@ -248,6 +312,22 @@ int main()
 	}
 	return 0;
 }
+
+void hitPose(const uint16_t inp[]){
+	
+	delay(100);
+	fillRectangle(50,50,32,32,0);
+	putImage(50, 50, 32, 32, inp, 0, 0);
+	delay(300);
+
+}
+
+void changeHearts(const uint16_t inp[]){
+	fillRectangle(50, 90, 32, 16, 0); //clears the screen
+	delay(200);
+	putImage(50, 90, 32, 16, inp, 0, 0);
+}
+
 void initSysTick(void)
 {
 	SysTick->LOAD = 48000;
@@ -255,9 +335,44 @@ void initSysTick(void)
 	SysTick->VAL = 10;
 	__asm(" cpsie i "); // enable interrupts
 }
+
 void SysTick_Handler(void)
 {
 	milliseconds++;
+	static int index=0;
+	static int current_note_timer;
+	// background tune handling
+	if (background_tune_notes != 0)
+	{
+		// if there is a tune...
+		if (current_note_timer == 0)
+		{
+			// .. move on to the next note (if there is one)
+			index++;
+			if (index >= background_tune_note_count)
+			{
+				// no more notes.
+				if (background_repeat_tune == 0)
+				{
+					// don't repeat
+					background_tune_notes = 0;
+				}
+				else
+				{
+					// reset to first note and repeat...
+					index = 0;
+				}
+			}
+			else
+			{
+				current_note_timer = background_tune_times[index];
+				playNote(background_tune_notes[index]);
+			}
+
+		}
+		if (current_note_timer != 0)
+			current_note_timer -- ;
+	}
 }
 void initClock(void)
 {
