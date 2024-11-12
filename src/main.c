@@ -183,6 +183,10 @@ int main()
 	printText("RETRO", 50, 15, RGBToWord(0xff,0xff,0), 0);
 	playNote(C3);
 	
+	ledOn(blueBit);
+	ledOn(redBit);
+	ledOn(greenBit);
+	ledOn(orangeBit);
 	delay(800);
 	stopSound();
 	menu = 1;
