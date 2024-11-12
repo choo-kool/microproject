@@ -21,6 +21,8 @@ void enablePullUp(GPIO_TypeDef *Port, uint32_t BitNumber);
 void pinMode(GPIO_TypeDef *Port, uint32_t BitNumber, uint32_t Mode);
 void hitPose(const uint16_t []);
 void changeHearts(const uint16_t []);
+void ledOn(int);
+void ledOff(int);
 
 volatile uint32_t milliseconds;
 
@@ -134,15 +136,17 @@ int main()
 	int vinverted = 0;
 	int toggle = 0;
 	int hmoved = 0;
-	int vmoved = 0;
+
+	int leftmoved = 0;
+	int rightmoved = 0;
 	uint16_t x = 50;
-	uint16_t y = 110;
+	uint16_t y = 140;
 	uint16_t oldx = x;
 	uint16_t oldy = y;
 	initClock();
 	initSysTick();
 	setupIO();
-	//putImage(20,80,12,16,dg1,0,0);
+	
 
 	//logic for left arrow location for isInside function
 	uint16_t leftX = 5;
@@ -158,27 +162,43 @@ int main()
 	int menu = 0;
 	int mode = 0;
 	int hearts = 3;
-	int newY = y;
+	int leftY = y;
+	int rightY = y;
+	int upY = y;
+	int downY = y;
+	uint16_t redBit = 0;
+	uint16_t greenBit = 12;
+	uint16_t blueBit = 9;
+	uint16_t orangeBit = 2;
 
 
 	//main menu title text
+	initSound();
 	printTextX2("DANCE ", 0, 0, RGBToWord(0xff,0,0), 0);
 	playNote(A4);
 	delay(300);
 	printTextX2("DANCE", 70, 0, RGBToWord(0,0xff,0), 0);
-	playNote(A4);
+	playNote(B5);
 	delay(600);
 	printText("RETRO", 50, 15, RGBToWord(0xff,0xff,0), 0);
 	playNote(C3);
 	
 	delay(800);
+	stopSound();
 	menu = 1;
+
+	
+	ledOff(blueBit);
+	ledOff(redBit);
+	ledOff(greenBit);
+	ledOff(orangeBit);
 
 	printText("1 Player", 35, 100, RGBToWord(0xff, 0xff, 0xff), 0);
 
 
 	//menu screen ui
 	while(menu){
+		
 		printText("Select Game Mode", 10, 60, RGBToWord(0xff, 0xff, 0xff), 0);
 		
 		printText("<...>", 50, 120, RGBToWord(0xff, 0xff, 0), 0);
@@ -201,12 +221,12 @@ int main()
 		if ((GPIOB->IDR & (1 << 5))==0){ // left press
 			if(mode == 0){
 				mode = 1;
-				printText("2 Player", 20, 80, RGBToWord(0xff, 0xff, 0xff), 0);
+				printText("2 Player", 35, 100, RGBToWord(0xff, 0xff, 0xff), 0);
 				delay(400);
 			}
 			else{
 				mode = 0;
-				printText("1 Player", 20, 80, RGBToWord(0xff, 0xff, 0xff), 0);
+				printText("1 Player", 35, 100, RGBToWord(0xff, 0xff, 0xff), 0);
 				delay(400);
 			}
 		}
@@ -225,7 +245,7 @@ int main()
 
 				//start our music once the game starts
 				delay(500);
-				initSound();
+				
 				background_tune_notes=my_notes;
 				background_tune_times=my_note_times;
 				background_tune_note_count=5;
@@ -245,37 +265,62 @@ int main()
 
 	while(gameStart)
 	{
+
+		initSound();
+		
 		//stickman idle animation logic
 		putImage(50, 50, 32, 32, neutral, 0, 0);
 		delay(300);
 		putImage(50, 50, 32, 32, bounce, 0, 0);
-		vmoved= 0;
-
+		
+		//create the outlines in the while loop so they are not cleared when arrow passes over them
 		putImage(5, 0, 8, 8, outLeft, 0, 0);
 		putImage(30, 0, 8, 8, outUp, 0, 0);
 		putImage(90, 0, 8, 8, outLeft, 1, 0);
 		putImage(110, 0, 8, 8, outUp, 0, 1);
 
+		//clears the text for when to hit it
 		fillRectangle(10, 20, 50, 50, 0);
 
+		//arrowmoved vertically set to 0
+		leftmoved= 0;
 		
+		if(leftY < 0){
+			playNote(C3);
+			hitPose(fail);
+			
+			ledOff(redBit);
+			delay(300);
+			leftY = y;
+			//delay(200);
+			
+		}
+
 
 		if ((GPIOB->IDR & (1 << 4))==0) // right pressed
 		{					
-			hitPose(right);		
+			hitPose(right);
 		}
 		if ((GPIOB->IDR & (1 << 5))==0) // left pressed
 		{
-			if (isInside(leftX,allY,8,8,leftX,newY) || isInside(leftX,allY,8,8,leftX+8,newY) || isInside(leftX,allY,8,8,x,newY+8) || isInside(leftX,allY,8,8,leftX+8,newY+8) )
+			
+			//logic to check whether the arrow is actually inside the outline arrow
+			if (isInside(leftX,allY,8,8,leftX,leftY) || isInside(leftX,allY,8,8,leftX+8,leftY) || isInside(leftX,allY,8,8,x,leftY+8) || isInside(leftX,allY,8,8,leftX+8,leftY+8) )
 			{
 				hitPose(left);
 				printTextX2("NICE", 40, 120, RGBToWord(0xff,0xff,0xff), 0);
 				delay(300);
 				fillRectangle(40, 110, 50, 40, 0);
+				leftY = y;
+				ledOff(redBit);
+				delay(200);
 				
 			}
 			else{
+				//if the arrow is not inside the outline arrow then fail the dance move
 				hitPose(fail);
+				leftY = y;
+				delay(200);
 			}				
 		}
 		if ( (GPIOA->IDR & (1 << 11)) == 0) // down pressed
@@ -287,27 +332,33 @@ int main()
 			hitPose(up);
 		}
 
-		putImage(leftX, newY, 8, 8, arLeft, 0, 0);
-		newY = newY -5;
-		
-		vmoved = 1;
+
+		//spawns the left arrow (testing)
+		putImage(leftX, leftY, 8, 8, arLeft, 0, 0);
+		leftY = leftY -15;
+		leftmoved = 1;
 		delay(100);
 
-		if (vmoved)
+
+		if (leftmoved)
 		{
 			// only redraw if there has been some movement (reduces flicker)
 			fillRectangle(leftX,oldy,8,8,0);
 			oldx = leftX;
-			oldy = newY;					
-			putImage(leftX, newY, 8, 8, arLeft, 0, 0);
+			oldy = leftY;					
+			putImage(leftX, leftY, 8, 8, arLeft, 0, 0);
 			
 			// Now check for an overlap by checking to see if ANY of the 4 corners of deco are within the target area
-			if (isInside(leftX,allY,8,8,leftX,newY) || isInside(leftX,allY,8,8,leftX+8,newY) || isInside(leftX,allY,8,8,x,newY+8) || isInside(leftX,allY,8,8,leftX+8,newY+8) )
+			if (isInside(leftX,allY,8,8,leftX,leftY) || isInside(leftX,allY,8,8,leftX+8,leftY) || isInside(leftX,allY,8,8,x,leftY+8) || isInside(leftX,allY,8,8,leftX+8,leftY+8) )
 			{
 				printTextX2("now!", 10, 20, RGBToWord(0xff,0xff,0), 0);
-				
+				//turn on the corresponding LED when you have to hit the button
+				ledOn(redBit);
 			}
-		}		
+
+		}
+		
+
 		delay(50);
 	}
 	return 0;
@@ -326,6 +377,28 @@ void changeHearts(const uint16_t inp[]){
 	fillRectangle(50, 90, 32, 16, 0); //clears the screen
 	delay(200);
 	putImage(50, 90, 32, 16, inp, 0, 0);
+}
+
+
+//function to handle turning the LEDs on
+void ledOn(int inp){
+	if(inp == 9 || inp == 12 || inp == 2){
+		GPIOA->ODR = GPIOA->ODR |= (1 << inp);
+	}
+	else{
+		GPIOB->ODR = GPIOB->ODR |= (1 << inp);
+	}
+	
+}
+
+//function to handle turning the LEDs off
+void ledOff(int inp){
+	if(inp == 9 || inp == 12 || inp == 2){	
+		GPIOA->ODR = GPIOA->ODR &=  ~(1 << inp);
+	}
+	else{
+		GPIOB->ODR = GPIOB->ODR &=  ~(1 << inp);
+	}
 }
 
 void initSysTick(void)
@@ -448,8 +521,22 @@ void setupIO()
 	pinMode(GPIOB,5,0);
 	pinMode(GPIOA,8,0);
 	pinMode(GPIOA,11,0);
+
+	//enable my pins for LEDS to be outputs
+	pinMode(GPIOB,1,1);
+	pinMode(GPIOB,0,1);
+	pinMode(GPIOA,12,1);
+	pinMode(GPIOA,9,1);
+	pinMode(GPIOA,2,1);
+	
+
 	enablePullUp(GPIOB,4);
 	enablePullUp(GPIOB,5);
 	enablePullUp(GPIOA,11);
 	enablePullUp(GPIOA,8);
+
+	enablePullUp(GPIOB,0);
+	enablePullUp(GPIOA,12);
+	enablePullUp(GPIOA,9);
+	enablePullUp(GPIOA,2);
 }
