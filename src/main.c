@@ -29,6 +29,7 @@ void changeHearts(const uint16_t []);
 void ledOn(int);
 void ledOff(int);
 int checkArr(int);
+void arrowMoved (int, int, uint16_t, const uint16_t []);
 
 volatile uint32_t milliseconds;
 
@@ -149,6 +150,10 @@ int main()
 	uint16_t y = 180;
 	uint16_t oldx = x;
 	uint16_t oldy = y;
+	uint16_t oldLy = y;
+	uint16_t oldUy = y;
+	uint16_t oldRy = y;
+	uint16_t oldDy = y;
 	initClock();
 	initSysTick();
 	setupIO();
@@ -292,6 +297,7 @@ int main()
 		//arrowmoved vertically set to 0
 		leftmoved= 0;
 		
+		
 
 
 		
@@ -344,19 +350,30 @@ int main()
 			hitPose(up);
 		}
 
-
+		
 		//spawns the left arrow (testing)
 		putImage(leftX, leftY, 8, 8, arLeft, 0, 0);
+		
 		leftY = leftY -15;
-		leftmoved = 1;
-		delay(100);
+		arrowMoved(leftX, leftY, oldLy, arLeft);
+		oldLy = leftY;
+		
+		
+		//leftmoved = 1;
+		//delay(100);
 
+		putImage(rightX, rightY, 8, 8, arRight, 0, 0);
+		
+		rightY = rightY -15;
+		arrowMoved(rightX, rightY, oldRy, arRight);
+		oldRy = rightY;
+	
 
+		/*
 		if (leftmoved)
 		{
 			// only redraw if there has been some movement (reduces flicker)
 			fillRectangle(leftX,oldy,8,8,0);
-			oldx = leftX;
 			oldy = leftY;					
 			putImage(leftX, leftY, 8, 8, arLeft, 0, 0);
 			
@@ -369,7 +386,7 @@ int main()
 			}
 
 		}
-		
+		*/
 
 		delay(50);
 	}
@@ -385,21 +402,49 @@ void hitPose(const uint16_t inp[]){
 
 }
 
+void arrowMoved (int arX, int arY, uint16_t oldy, const uint16_t inp[]){
+	
+	fillRectangle(arX,oldy,8,8,0);
+	oldy = arY;					
+	putImage(arX, arY, 8, 8, inp, 0, 0);
+			
+	//check if the arrow is up at the outline arrow
+	if (arY < 8){
+		printTextX2("now!", 10, 20, RGBToWord(0xff,0xff,0), 0);
+		//turn on the corresponding LED when you have to hit the button
+		switch(arX){
+			case(5):
+				ledOn(redBit);
+				break;
+			case(30):
+				ledOn(greenBit);
+				break;
+			case(90):
+				ledOn(blueBit);
+				break;
+			case(110):
+				ledOn(orangeBit);
+				break;
+				}
+			
+	}
+}
 void arrowPress(inp){
 
 }
 
 int checkArr(int arrowY){
 	if(arrowY < 0){
-			playNote(C3);
-			hitPose(fail);
+
+		playNote(C3);
+		hitPose(fail);
+		
+		ledOff(redBit);
+		delay(300);
+		return 1;
+		//delay(200);
 			
-			ledOff(redBit);
-			delay(300);
-			return 1;
-			//delay(200);
-			
-		}
+	}
 	
 }
 
