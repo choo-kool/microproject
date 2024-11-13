@@ -11,6 +11,11 @@ uint32_t background_repeat_tune;
 const uint32_t my_notes[]={A4,C3,B5,D3,F2};
 const uint32_t my_note_times[]={200,100,300,200,500};
 
+const uint16_t redBit = 0;
+const uint16_t greenBit = 12;	
+const uint16_t blueBit = 9;
+const uint16_t orangeBit = 2;
+
 void initClock(void);
 void initSysTick(void);
 void SysTick_Handler(void);
@@ -23,6 +28,7 @@ void hitPose(const uint16_t []);
 void changeHearts(const uint16_t []);
 void ledOn(int);
 void ledOff(int);
+int checkArr(int);
 
 volatile uint32_t milliseconds;
 
@@ -140,7 +146,7 @@ int main()
 	int leftmoved = 0;
 	int rightmoved = 0;
 	uint16_t x = 50;
-	uint16_t y = 140;
+	uint16_t y = 180;
 	uint16_t oldx = x;
 	uint16_t oldy = y;
 	initClock();
@@ -166,10 +172,7 @@ int main()
 	int rightY = y;
 	int upY = y;
 	int downY = y;
-	uint16_t redBit = 0;
-	uint16_t greenBit = 12;
-	uint16_t blueBit = 9;
-	uint16_t orangeBit = 2;
+	
 
 
 	//main menu title text
@@ -260,6 +263,8 @@ int main()
 				putImage(30, 0, 8, 8, outUp, 0, 0);
 				putImage(90, 0, 8, 8, outLeft, 1, 0);
 				putImage(110, 0, 8, 8, outUp, 0, 1);
+
+				initSound();
 			}
 		} // up pressed
 
@@ -270,8 +275,6 @@ int main()
 	while(gameStart)
 	{
 
-		initSound();
-		
 		//stickman idle animation logic
 		putImage(50, 50, 32, 32, neutral, 0, 0);
 		delay(300);
@@ -289,17 +292,22 @@ int main()
 		//arrowmoved vertically set to 0
 		leftmoved= 0;
 		
-		if(leftY < 0){
-			playNote(C3);
-			hitPose(fail);
-			
-			ledOff(redBit);
-			delay(300);
-			leftY = y;
-			//delay(200);
-			
-		}
 
+
+		
+		if(checkArr(leftY) == 1){
+			leftY = y;
+		}
+		if(checkArr(upY) == 1){
+			rightY = y;
+		}
+		if(checkArr(rightY) == 1){
+			rightY = y;
+		}
+		if(checkArr(downY) == 1){
+			rightY = y;
+		}
+		
 
 		if ((GPIOB->IDR & (1 << 4))==0) // right pressed
 		{					
@@ -309,7 +317,7 @@ int main()
 		{
 			
 			//logic to check whether the arrow is actually inside the outline arrow
-			if (isInside(leftX,allY,8,8,leftX,leftY) || isInside(leftX,allY,8,8,leftX+8,leftY) || isInside(leftX,allY,8,8,x,leftY+8) || isInside(leftX,allY,8,8,leftX+8,leftY+8) )
+			if (leftY < 8)
 			{
 				hitPose(left);
 				printTextX2("NICE", 40, 120, RGBToWord(0xff,0xff,0xff), 0);
@@ -352,8 +360,8 @@ int main()
 			oldy = leftY;					
 			putImage(leftX, leftY, 8, 8, arLeft, 0, 0);
 			
-			// Now check for an overlap by checking to see if ANY of the 4 corners of deco are within the target area
-			if (isInside(leftX,allY,8,8,leftX,leftY) || isInside(leftX,allY,8,8,leftX+8,leftY) || isInside(leftX,allY,8,8,x,leftY+8) || isInside(leftX,allY,8,8,leftX+8,leftY+8) )
+			//check if the arrow is up at the outline arrow
+			if (leftY < 8)
 			{
 				printTextX2("now!", 10, 20, RGBToWord(0xff,0xff,0), 0);
 				//turn on the corresponding LED when you have to hit the button
@@ -375,6 +383,24 @@ void hitPose(const uint16_t inp[]){
 	putImage(50, 50, 32, 32, inp, 0, 0);
 	delay(300);
 
+}
+
+void arrowPress(inp){
+
+}
+
+int checkArr(int arrowY){
+	if(arrowY < 0){
+			playNote(C3);
+			hitPose(fail);
+			
+			ledOff(redBit);
+			delay(300);
+			return 1;
+			//delay(200);
+			
+		}
+	
 }
 
 void changeHearts(const uint16_t inp[]){
