@@ -1,7 +1,18 @@
+/*Microprocessor Inputs and outputs project by Andrew Ugweches and Joshua Stanley
+This game is inspired by the arcade game, Dance Dance revolution.
+Users can select between 1 player and 2 player modes from the main menu
+In the game arrows are spawned randomly and you must time the arrow with your input to increase your score
+But beware as inputting too soon or the wrong button can cause you to lose a heart, 3 strikes and you're out!
+In multiplayer the microprocessor is handed to the next player so that the two users can compete for the highest score
+
+*/
+
 #include <stm32f031x6.h>
 #include "display.h"
 #include "sound.h"
 #include "musical_notes.h"
+#include <stdlib.h>
+#include <time.h>
 
 uint32_t *background_tune_notes;
 uint32_t *background_tune_times;
@@ -24,6 +35,11 @@ void setupIO();
 int isInside(uint16_t x1, uint16_t y1, uint16_t w, uint16_t h, uint16_t px, uint16_t py);
 void enablePullUp(GPIO_TypeDef *Port, uint32_t BitNumber);
 void pinMode(GPIO_TypeDef *Port, uint32_t BitNumber, uint32_t Mode);
+void menuFunc(int, int, int, int);
+void gameFunc(int);
+void gameOverfunc(int [], int);
+void menupromptFunc(void);
+void genRenVal(void);
 
 void hitPose(const uint16_t []);
 void changeHearts(const uint16_t []);
@@ -32,6 +48,39 @@ void ledOff(int);
 int checkArr(int);
 void arrowMoved (int, int, uint16_t, const uint16_t []);
 void checkHearts (int);
+
+#define x 50
+#define y 180
+uint16_t oldx = x;
+uint16_t oldy = y;
+uint16_t oldLy = y;
+uint16_t oldUy = y;
+uint16_t oldRy = y;
+uint16_t oldDy = y;
+
+uint16_t leftX = 5;
+uint16_t upX = 30;
+uint16_t rightX = 90;
+uint16_t downX = 110;
+uint16_t allY = 0;
+
+	
+int speed = 15;
+int score = 0;
+int players = 1;
+int player = 1;
+int scores[] = {0,0};
+int gameStart = 0;
+int menu = 0;
+int gameOver = 0;
+int menuPrompt = 0;
+int mode = 0;
+int hearts = 3;
+int heartsChanged = 0;
+int leftY = y;
+int rightY = y;
+int upY = y;
+int downY = y;
 
 volatile uint32_t milliseconds;
 
@@ -91,10 +140,12 @@ const uint16_t bounce[] = {
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,65535,65535,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,65535,0,0,0,0,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,0,0,0,0,0,0,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,0,0,65535,0,0,65535,0,0,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,0,0,0,0,0,0,0,0,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,0,0,65535,0,0,65535,0,0,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,0,0,65535,65535,0,0,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,65535,0,0,0,0,65535,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,65535,65535,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,65535,65535,65535,65535,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,0,0,65535,65535,0,0,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,0,0,65535,65535,0,0,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,0,0,65535,65535,0,0,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,0,0,65535,65535,0,0,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,0,0,65535,65535,0,0,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,0,0,65535,65535,0,0,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,0,0,65535,65535,0,0,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,40224,0,0,65535,65535,0,0,40224,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,0,0,65535,65535,0,0,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,65535,0,0,65535,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,65535,0,0,65535,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,65535,0,0,65535,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,65535,0,0,65535,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,40224,40224,0,0,40224,40224,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,65535,65535,0,0,65535,65535,65535,0,0,0,0,0,0,0,0,0,0,0,0,
 };
 
+//sprite for full hearts
 const uint16_t heartsfull[] = {
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,40224,0,0,0,40224,0,0,0,0,0,40224,0,0,0,40224,0,0,0,0,0,40224,0,0,0,40224,0,0,0,0,0,0,0,40224,40224,0,40224,40224,0,0,0,0,0,40224,40224,0,40224,40224,0,0,0,0,0,40224,40224,0,40224,40224,0,0,0,0,0,0,40224,40224,40224,40224,40224,40224,40224,0,0,0,40224,40224,40224,40224,40224,40224,40224,0,0,0,40224,40224,40224,40224,40224,40224,40224,0,0,0,0,0,40224,40224,40224,40224,40224,40224,40224,0,0,0,40224,40224,40224,40224,40224,40224,40224,0,0,0,40224,40224,40224,40224,40224,40224,40224,0,0,0,0,0,0,40224,40224,40224,40224,40224,0,0,0,0,0,40224,40224,40224,40224,40224,0,0,0,0,0,40224,40224,40224,40224,40224,0,0,0,0,0,0,0,0,40224,40224,40224,0,0,0,0,0,0,0,40224,40224,40224,0,0,0,0,0,0,0,40224,40224,40224,0,0,0,0,0,0,0,0,0,0,40224,0,0,0,0,0,0,0,0,0,40224,0,0,0,0,0,0,0,0,0,40224,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 };
 
+//etc
 const uint16_t hearts2[] = {
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,40224,0,0,0,40224,0,0,0,0,0,40224,0,0,0,40224,0,0,0,0,0,40224,0,0,0,40224,0,0,0,0,0,0,0,40224,40224,0,40224,40224,0,0,0,0,0,40224,40224,0,40224,40224,0,0,0,0,0,40224,40224,0,40224,40224,0,0,0,0,0,0,40224,40224,40224,40224,40224,40224,40224,0,0,0,40224,40224,40224,40224,40224,40224,40224,0,0,0,40224,40224,40224,0,40224,40224,40224,0,0,0,0,0,40224,40224,40224,40224,40224,40224,40224,0,0,0,40224,40224,40224,40224,40224,40224,40224,0,0,0,40224,40224,0,0,40224,40224,40224,0,0,0,0,0,0,40224,40224,40224,40224,40224,0,0,0,0,0,40224,40224,40224,40224,40224,0,0,0,0,0,40224,0,40224,40224,40224,0,0,0,0,0,0,0,0,40224,40224,40224,0,0,0,0,0,0,0,40224,40224,40224,0,0,0,0,0,0,0,0,40224,40224,0,0,0,0,0,0,0,0,0,0,40224,0,0,0,0,0,0,0,0,0,40224,0,0,0,0,0,0,0,0,0,40224,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 };
@@ -113,6 +164,7 @@ const uint16_t heartsflash[] = {
 	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,65535,0,0,0,65535,0,0,0,0,0,65535,0,0,0,65535,0,0,0,0,0,65535,0,0,0,65535,0,0,0,0,0,0,0,65535,65535,0,65535,65535,0,0,0,0,0,65535,65535,0,0,65535,0,0,0,0,0,65535,65535,0,65535,65535,0,0,0,0,0,0,65535,65535,65535,0,65535,65535,65535,0,0,0,65535,65535,65535,0,65535,65535,65535,0,0,0,65535,65535,65535,0,65535,65535,65535,0,0,0,0,0,65535,65535,0,0,65535,65535,65535,0,0,0,65535,65535,65535,0,65535,65535,65535,0,0,0,65535,65535,0,0,65535,65535,65535,0,0,0,0,0,0,65535,0,65535,65535,65535,0,0,0,0,0,65535,0,65535,65535,65535,0,0,0,0,0,65535,0,65535,65535,65535,0,0,0,0,0,0,0,0,0,65535,65535,0,0,0,0,0,0,0,0,65535,65535,0,0,0,0,0,0,0,0,65535,65535,0,0,0,0,0,0,0,0,0,0,65535,0,0,0,0,0,0,0,0,0,65535,0,0,0,0,0,0,0,0,0,65535,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
 
+//sprite for arrow outlines
 const uint16_t outLeft[] = {
 	0,0,0,65535,0,0,0,0,0,0,65535,0,0,0,0,0,0,65535,0,0,65535,65535,65535,65535,65535,0,0,0,0,0,0,0,65535,0,0,0,0,0,0,0,0,65535,0,0,65535,65535,65535,65535,0,0,65535,0,0,0,0,0,0,0,0,65535,0,0,0,0,
 };
@@ -121,7 +173,7 @@ const uint16_t outUp[] = {
 	0,0,0,65535,65535,0,0,0,0,0,65535,0,0,65535,0,0,0,65535,0,0,0,0,65535,0,65535,0,0,0,0,0,0,65535,0,0,65535,0,0,65535,0,0,0,0,65535,0,0,65535,0,0,0,0,65535,0,0,65535,0,0,0,0,65535,0,0,65535,0,0,
 };
 
-
+//sprite for each arrow, diff colours
 const uint16_t arLeft[] = {
 	0,0,0,40224,0,0,0,0,0,0,40224,40224,0,0,0,0,0,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,40224,0,40224,40224,40224,40224,40224,40224,40224,0,0,40224,40224,0,0,0,0,0,0,0,40224,0,0,0,0,
 };
@@ -141,55 +193,16 @@ const uint16_t arDown[] = {
 
 int main()
 {
-	int hinverted = 0;
-	int vinverted = 0;
-	int toggle = 0;
-	int hmoved = 0;
-
-	int leftmoved = 0;
-	int rightmoved = 0;
-	uint16_t x = 50;
-	uint16_t y = 180;
-	uint16_t oldx = x;
-	uint16_t oldy = y;
-	uint16_t oldLy = y;
-	uint16_t oldUy = y;
-	uint16_t oldRy = y;
-	uint16_t oldDy = y;
+	
+	
 	initClock();
 	initSysTick();
 	setupIO();
-	
-
-	//logic for left arrow location for isInside function
-	uint16_t leftX = 5;
-	uint16_t upX = 30;
-	uint16_t rightX = 90;
-	uint16_t downX = 110;
-	uint16_t allY = 0;
-
-	
-	int speed = 15;
-	int score = 0;
-	int players = 1;
-	int player = 1;
-	int scores[] = {0,0};
-	int game = 0;
-	int gameStart = 0;
-	int menu = 0;
-	int gameOver = 0;
-	int menuPrompt = 0;
-	int mode = 0;
-	int hearts = 3;
-	int heartsChanged = 0;
-	int leftY = y;
-	int rightY = y;
-	int upY = y;
-	int downY = y;
-	
-
+	//generate random seed for random values later on
+	srand(time(NULL));
 
 	//main menu title text
+	//start the sound function
 	initSound();
 	printTextX2("DANCE ", 0, 0, RGBToWord(0xff,0,0), 0);
 	playNote(A4);
@@ -200,27 +213,51 @@ int main()
 	printText("RETRO", 50, 15, RGBToWord(0xff,0xff,0), 0);
 	playNote(C3);
 	
+
+	//this is to check that all LEDs are working properly
 	ledOn(blueBit);
 	ledOn(redBit);
 	ledOn(greenBit);
 	ledOn(orangeBit);
 	delay(800);
+	//stop the sound because its annoying
 	stopSound();
 	menu = 1;
-	
 
 	
+	
+
+	//turn off the LEDs 
 	ledOff(blueBit);
 	ledOff(redBit);
 	ledOff(greenBit);
 	ledOff(orangeBit);
 
-	printText("1 Player", 35, 100, RGBToWord(0xff, 0xff, 0xff), 0);
 
+	//call the menuFunction
+	if(menu == 1){
+		//printText("1 Player", 35, 100, RGBToWord(0xff, 0xff, 0xff), 0);
+		menuFunc(menu, mode, players, gameStart);
+		//gameStart = 1;
+	}
 	
-	//menu screen ui
+
+}
+
+//function for the menu
+void menuFunc(int menu, int mode, int players, int gameStart){
+	menu = 1;
+	mode = 0;
+	gameStart =0;
+	//reprints the title screen (for when users return to the menu)
+	printTextX2("DANCE ", 0, 0, RGBToWord(0xff,0,0), 0);
+	printTextX2("DANCE", 70, 0, RGBToWord(0,0xff,0), 0);
+	printText("RETRO", 50, 15, RGBToWord(0xff,0xff,0), 0);
+	printText("1 Player", 35, 100, RGBToWord(0xff, 0xff, 0xff), 0);
+	int playerCount = players;
+
 	while(menu){
-		menuPrompt = 0;
+		
 		printText("Select Game Mode", 10, 60, RGBToWord(0xff, 0xff, 0xff), 0);
 		
 		printText("<...>", 50, 120, RGBToWord(0xff, 0xff, 0), 0);
@@ -257,16 +294,18 @@ int main()
 			if(mode == 0){
 				printTextX2("1 Player", 20, 80, RGBToWord(100, 0xff, 0), 0);
 				players = 1;
+				
 			}
 			else{
 				players = 2;
-				printTextX2("2 Players", 20, 80, RGBToWord(100, 0xff, 0), 0);
+				printTextX2("2 Players", 12, 80, RGBToWord(100, 0xff, 0), 0);
+				
 			}
 			menu = 0;
 			delay(500);
 		
 			delay(500);
-			gameStart = 1;	//start the game logic
+			//gameStart = 1;	//start the game logic
 			fillRectangle(0, 0, 200, 200, 0); //clears the screen
 			delay(400);
 			changeHearts(heartsfull); //display our players hearts
@@ -286,19 +325,49 @@ int main()
 			putImage(110, 0, 8, 8, outUp, 0, 1);
 
 			initSound();
+			gameFunc(players);
+			
 		} // up pressed
+		
 
 
 	}
+	
+}
 
+//main game function and logic
+void gameFunc(int playerCount){
 
+	//reinitialise the variables back to their original values (for game restart)
+	int speed =3;
+	int score = 0;
+	int player = 1;
+	int scores[] = {0,0};
+	int gameStart = 1;
+	int hearts = 3;
+	int heartsChanged = 0;
+	int leftY = y;
+	int rightY = y;
+	int upY = y;
+	int downY = y;
+
+	//create flags for each of the arrows so that we can handle arrow spawning
+	int leftFlag = 0;
+	int upFlag = 0;
+	int rightFlag = 0;
+	int downFlag = 0;
+	
+	int value = 0;
+	value = genRanVal();
+	
 	while(gameStart)
 	{
-
+		
+		//printNumber(value, 10, 10, RGBToWord(255, 0, 0), 0);
 		printNumber(score, 48, 140, 0xff, 0);
 		//stickman idle animation logic
 		putImage(50, 50, 32, 32, neutral, 0, 0);
-		delay(300);
+		//delay(300);
 		putImage(50, 50, 32, 32, bounce, 0, 0);
 		
 		//create the outlines in the while loop so they are not cleared when arrow passes over them
@@ -310,44 +379,78 @@ int main()
 		//clears the text for when to hit it
 		fillRectangle(10, 20, 50, 50, 0);
 
-		if(speed > 35){
-			speed = 35;
+		if(speed > 8){
+			speed = 8;
 		}
 		
+		//if a heart has been lost then go through this logic
 		if(heartsChanged == 1){
 			checkHearts(hearts);
 			heartsChanged = 0;
+			//reset the arrows just in case, was to fix an error where you could sometimes lose all 3 lives off one arrow
+			leftY = y;
+			upY = y;
+			rightY = y;
+			downY = y;
+
+
+			//game over logic
 			if(hearts == 0){
 				fillRectangle(0, 0, 200, 200, 0); //clears the screen
 				printTextX2("You Lose", 20, 80, RGBToWord(255, 0, 0), 0);
 				delay(400);
 				delay(100);
-				if(players == 1){
+				//if only 1 player mode selected
+				if(playerCount == 1){
 					scores[player] = score;
 					delay(100);
+					gameOverfunc(scores, playerCount);
 					gameStart = 0;
 					gameOver = 1;
-				}
-				else if(players == 2){
-					scores[player] = score;
-					delay(100);
 					
-					printTextX2("Player 2 Turn", 10, 80, RGBToWord(100, 0xff, 0), 0);
+				}
+				else if(playerCount == 2){
+					//add the current players score to the scores array
+					scores[player] = score;
+					fillRectangle(0, 0, 200, 200, 0);//clears the screen
+					delay(800);
+					
+					printTextX2("Player 2's", 10, 80, RGBToWord(100, 0xff, 0), 0);
+					printTextX2("Turn", 30, 110, RGBToWord(100, 0xff, 0), 0);
+					printTextX2("Swap!!", 30, 130, RGBToWord(100, 0xff, 0), 0);
+					delay(700);
+					fillRectangle(0, 0, 200, 200, 0);//clears the screen
+					//reset all the variables so player 2 has an equal chance
+					leftFlag = 0;
+					upFlag = 0;
+					rightFlag = 0;
+					downFlag = 0;
 					player=2;
-					speed = 15;
+					speed = 3;
 					score = 0;
 					hearts = 3;
-					players = 3;
+					playerCount = 3;
+					leftY = y;
+					rightY = y;
+					upY= y;
+					downY = y;
+					delay(500);
+					//re display the full hearts
+					changeHearts(heartsfull);
 				}
 				else{
+					//final
 					scores[player] = score;
+					gameOverfunc(scores, playerCount);
 					gameStart = 0;
 					gameOver = 1;
+					
 				}
 			}
 		}
 
 		
+		//logic and functions to check that the arrow has not gone off the screen, if it has, reset the position and remove a heart
 		if(checkArr(leftY) == 1){
 			leftY = y;
 			hearts-=1;
@@ -377,19 +480,21 @@ int main()
 				hitPose(right);
 				score+=10;
 				printTextX2("NICE", 40, 120, RGBToWord(0xff,0xff,0xff), 0);
-				delay(300);
+				//delay(300);
 				fillRectangle(40, 110, 50, 40, 0);
 				rightY = y;
 				ledOff(blueBit);
-				delay(200);
-				speed+=5;
+				//delay(200);
+				speed+=1;
+				rightFlag = 0;
+				value = genRanVal(); // generate a new random value so that the arrow respawns in a new positon
 				
 			}
 			else{
 				//if the arrow is not inside the outline arrow then fail the dance move
 				hitPose(fail);
 				rightY = y;
-				delay(200);
+				delay(500);
 				hearts-=1;
 				heartsChanged = 1;
 			}
@@ -408,14 +513,16 @@ int main()
 				leftY = y;
 				ledOff(redBit);
 				delay(200);
-				speed+=5;
-				
+				speed+=1;
+				leftFlag = 0;
+				value = genRanVal();// generate a new random value so that the arrow respawns in a new positon
+
 			}
 			else{
 				//if the arrow is not inside the outline arrow then fail the dance move
 				hitPose(fail);
 				leftY = y;
-				delay(200);
+				delay(500);
 				hearts-=1;
 				heartsChanged = 1;
 			}				
@@ -432,14 +539,16 @@ int main()
 				downY = y;
 				ledOff(orangeBit);
 				delay(200);
-				speed+=5;
-				
+				speed+=1;
+				downFlag = 0;
+				value = genRanVal();// generate a new random value so that the arrow respawns in a new positon
+
 			}
 			else{
 				//if the arrow is not inside the outline arrow then fail the dance move
 				hitPose(fail);
 				downY = y;
-				delay(200);
+				delay(500);
 				hearts-=1;
 				heartsChanged = 1;
 			}
@@ -456,118 +565,78 @@ int main()
 				upY = y;
 				ledOff(greenBit);
 				delay(200);
-				speed+=5;
-				
+				speed+=1;
+				upFlag = 0;
+				value = genRanVal();// generate a new random value so that the arrow respawns in a new positon
+
 			}
 			else{
 				//if the arrow is not inside the outline arrow then fail the dance move
 				hitPose(fail);
 				upY = y;
-				delay(200);
+				delay(500);
 				hearts-=1;
 				heartsChanged = 1;
 			}
 		}
 
 		
-		//spawns the left arrow (testing)
-		putImage(leftX, leftY, 8, 8, arLeft, 0, 0);
-		
-		leftY = leftY - speed;
-		arrowMoved(leftX, leftY, oldLy, arLeft);
-		oldLy = leftY;
-		
-		
-		
-		/*
-		putImage(rightX, rightY, 8, 8, arRight, 0, 0);
-		
-		rightY = rightY - speed;
-		arrowMoved(rightX, rightY, oldRy, arRight);
-		oldRy = rightY;
-		*/
-
-		/*
-		if (leftmoved)
-		{
-			// only redraw if there has been some movement (reduces flicker)
-			fillRectangle(leftX,oldy,8,8,0);
-			oldy = leftY;					
-			putImage(leftX, leftY, 8, 8, arLeft, 0, 0);
-			
-			//check if the arrow is up at the outline arrow
-			if (leftY < 8)
-			{
-				printTextX2("now!", 10, 20, RGBToWord(0xff,0xff,0), 0);
-				//turn on the corresponding LED when you have to hit the button
-				ledOn(redBit);
-			}
-
+		//spawns the arrows if the flag was set
+		//srand(time(NULL))
+		if(value == 1){
+			leftFlag = 1;
 		}
-		*/
+		else if(value ==2){
+			upFlag = 1;
+		}
+		else if(value == 3){
+			rightFlag = 1;
+		}
+		else if(value ==4){
+			downFlag = 1;
+		}
 
+		if(leftFlag == 1){
+			leftY = leftY - speed;
+			arrowMoved(leftX, leftY, oldLy, arLeft);
+			oldLy = leftY;
+			upFlag = 0;
+			rightFlag = 0;
+			downFlag = 0;
+		}
+
+		if(upFlag == 1){
+			upY = upY - speed;
+			arrowMoved(upX, upY, oldUy, arUp);
+			oldUy = upY;
+			leftFlag = 0;
+			rightFlag = 0;
+			downFlag = 0;
+		}
+		
+		if(rightFlag == 1){
+			rightY = rightY - speed;
+			arrowMoved(rightX, rightY, oldRy, arRight);
+			oldRy = rightY;
+			upFlag = 0;
+			leftFlag = 0;
+			downFlag = 0;
+		}
+
+		if(downFlag == 1){
+			downY = downY - speed;
+			arrowMoved(downX, downY, oldDy, arDown);
+			oldDy = downY;
+			upFlag = 0;
+			rightFlag = 0;
+			leftFlag = 0;
+		}
+		
 		delay(50);
 	}
-
-	if (gameOver == 1){
-		background_repeat_tune = 0;
-		stopSound();
-		initSound();
-		
-		fillRectangle(0, 0, 200, 200, 0); //clears the screen
-		printText("Final scores", 05, 20, RGBToWord(0xff,0xff,0), 0);
-		playNote(C3);
-		delay(300);
-		printTextX2("Player 1: ", 15, 30, RGBToWord(0xff,0xff,0), 0);
-		playNote(C3);
-		delay(300);
-		printNumberX2(scores[1], 40, 50, 0xff, 0);
-		
-		if(players > 1){	
-			printTextX2("Player 2: ", 15, 70, RGBToWord(0xff,0xff,0), 0);
-			playNote(C3);
-			delay(300);
-			printNumberX2(scores[2], 40, 90, 0xff, 0);
-
-			delay(1000);
-			fillRectangle(0, 0, 200, 200, 0);
-			if(scores[2] > scores[1]){
-				printTextX2("Player 2 Win!", 40, 120, RGBToWord(0,0xff,0), 0);
-			}
-			else{
-				printTextX2("Player 1 Win!", 40, 120, RGBToWord(0,0xff,0), 0);
-			}
-		}
-		stopSound();
-		delay(500);
-		printText("Press ^", 40, 140, RGBToWord(0xff, 0xff, 0xff), 0);
-		printText("for main menu", 20, 150, RGBToWord(0xff, 0xff, 0xff), 0);
-		
-		menuPrompt = 1;
-		gameOver = 0;
-		
-	}
-	while (menuPrompt){
-		if ( (GPIOA->IDR & (1 << 8)) == 0){
-			printText("LOL", 40, 50, RGBToWord(0xff, 0xff, 0xff), 0);
-			
-			gameOver =0;
-			gameStart =0;
-			
-			fillRectangle(0, 0, 200, 200, 0);
-			delay(100);
-			
-			menu = 1;
-			delay(400);
-
-		} // up pressed	
-	}
-	
-
-	//return 0;
 }
 
-
+//function for making the stickman hit the correct pose
 void hitPose(const uint16_t inp[]){
 	
 	delay(100);
@@ -577,6 +646,7 @@ void hitPose(const uint16_t inp[]){
 
 }
 
+//function for cleaning up the arrow movements
 void arrowMoved (int arX, int arY, uint16_t oldy, const uint16_t inp[]){
 	
 	fillRectangle(arX,oldy,8,8,0);
@@ -605,6 +675,7 @@ void arrowMoved (int arX, int arY, uint16_t oldy, const uint16_t inp[]){
 	}
 }
 
+//function that checks if arrow went off screen
 int checkArr(int arrowY){
 	if(arrowY < 0){
 
@@ -620,12 +691,91 @@ int checkArr(int arrowY){
 	
 }
 
+
+//gameover menu screen function
+void gameOverfunc(int scores[], int players){
+	gameOver = 1;
+	if (gameOver == 1){
+		background_repeat_tune = 0;
+		stopSound();
+		initSound();
+		
+		fillRectangle(0, 0, 200, 200, 0); //clears the screen
+		printText("Final scores", 05, 20, RGBToWord(0xff,0xff,0), 0);
+		playNote(C3);
+		delay(300);
+		printTextX2("Player 1: ", 15, 30, RGBToWord(0xff,0xff,0), 0);
+		playNote(C3);
+		delay(300);
+		printNumberX2(scores[1], 40, 50, 0xff, 0);
+		stopSound();
+		if(players > 1){	
+			printTextX2("Player 2: ", 15, 70, RGBToWord(0xff,0xff,0), 0);
+			playNote(C3);
+			delay(300);
+			stopSound();
+			printNumberX2(scores[2], 40, 90, 0xff, 0);
+
+			delay(2000);
+			fillRectangle(0, 0, 200, 200, 0);
+			if(scores[2] > scores[1]){
+				printTextX2("Player 2", 15, 40, RGBToWord(0,0xff,0), 0);
+				printTextX2("Wins", 35, 60, RGBToWord(0,0xff,0), 0);
+			}
+			else{
+				printTextX2("Player 1", 15, 40, RGBToWord(0,0xff,0), 0);
+				printTextX2("Wins", 35, 60, RGBToWord(0,0xff,0), 0);
+			}
+		}
+		delay(500);
+		printText("Press ^", 40, 140, RGBToWord(0xff, 0xff, 0xff), 0);
+		printText("for main menu", 20, 150, RGBToWord(0xff, 0xff, 0xff), 0);
+		
+		menuPrompt = 1;
+		gameOver = 0;
+		menupromptFunc();
+		
+	}
+}
+
+//function that allows user to return to main menu after the game over screen
+void menupromptFunc(void){
+	while (menuPrompt){
+		if ( (GPIOA->IDR & (1 << 8)) == 0){
+			printText("LOL", 40, 50, RGBToWord(0xff, 0xff, 0xff), 0);
+			
+			gameOver =0;
+			gameStart =0;
+			
+			fillRectangle(0, 0, 200, 200, 0);
+			delay(100);
+			
+			menu = 1;
+			delay(400);
+			menuFunc(menu, 0, 0, 0);
+			delay(400);
+
+		} // up pressed	
+	}
+}
+
+//function to change the hearts display
 void changeHearts(const uint16_t inp[]){
 	fillRectangle(50, 90, 32, 16, 0); //clears the screen
 	delay(200);
 	putImage(50, 90, 32, 16, inp, 0, 0);
 }
 
+
+//function used to generate random value
+int genRanVal(void){
+	
+	int value = 0;
+	value = ((rand() % (5 - 1)) + 1);
+	return value;
+}
+
+//function to call the changeHearts function based on the amount of player Hearts
 void checkHearts (int num){
 	if(num == 2){
 		changeHearts(hearts2);
