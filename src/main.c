@@ -24,12 +24,14 @@ void setupIO();
 int isInside(uint16_t x1, uint16_t y1, uint16_t w, uint16_t h, uint16_t px, uint16_t py);
 void enablePullUp(GPIO_TypeDef *Port, uint32_t BitNumber);
 void pinMode(GPIO_TypeDef *Port, uint32_t BitNumber, uint32_t Mode);
+
 void hitPose(const uint16_t []);
 void changeHearts(const uint16_t []);
 void ledOn(int);
 void ledOff(int);
 int checkArr(int);
 void arrowMoved (int, int, uint16_t, const uint16_t []);
+void checkHearts (int);
 
 volatile uint32_t milliseconds;
 
@@ -167,12 +169,19 @@ int main()
 	uint16_t allY = 0;
 
 	
-
-
+	int speed = 15;
+	int score = 0;
+	int players = 1;
+	int player = 1;
+	int scores[] = {0,0};
+	int game = 0;
 	int gameStart = 0;
 	int menu = 0;
+	int gameOver = 0;
+	int menuPrompt = 0;
 	int mode = 0;
 	int hearts = 3;
+	int heartsChanged = 0;
 	int leftY = y;
 	int rightY = y;
 	int upY = y;
@@ -198,6 +207,7 @@ int main()
 	delay(800);
 	stopSound();
 	menu = 1;
+	
 
 	
 	ledOff(blueBit);
@@ -207,10 +217,10 @@ int main()
 
 	printText("1 Player", 35, 100, RGBToWord(0xff, 0xff, 0xff), 0);
 
-
+	
 	//menu screen ui
 	while(menu){
-		
+		menuPrompt = 0;
 		printText("Select Game Mode", 10, 60, RGBToWord(0xff, 0xff, 0xff), 0);
 		
 		printText("<...>", 50, 120, RGBToWord(0xff, 0xff, 0), 0);
@@ -243,34 +253,39 @@ int main()
 			}
 		}
 
-		if ( (GPIOA->IDR & (1 << 8)) == 0){
+		if ( (GPIOA->IDR & (1 << 8)) == 0){ //up pressed
 			if(mode == 0){
 				printTextX2("1 Player", 20, 80, RGBToWord(100, 0xff, 0), 0);
-				menu = 0;
-				delay(500);
-		
-				delay(500);
-				gameStart = 1;	//start the game logic
-				fillRectangle(0, 0, 200, 200, 0); //clears the screen
-				delay(400);
-				changeHearts(heartsfull); //display our players hearts
-
-				//start our music once the game starts
-				delay(500);
-				
-				background_tune_notes=my_notes;
-				background_tune_times=my_note_times;
-				background_tune_note_count=5;
-				background_repeat_tune=1;
-				
-				//display our empty arrows to warn user which key they will have to press
-				putImage(5, 0, 8, 8, outLeft, 0, 0);
-				putImage(30, 0, 8, 8, outUp, 0, 0);
-				putImage(90, 0, 8, 8, outLeft, 1, 0);
-				putImage(110, 0, 8, 8, outUp, 0, 1);
-
-				initSound();
+				players = 1;
 			}
+			else{
+				players = 2;
+				printTextX2("2 Players", 20, 80, RGBToWord(100, 0xff, 0), 0);
+			}
+			menu = 0;
+			delay(500);
+		
+			delay(500);
+			gameStart = 1;	//start the game logic
+			fillRectangle(0, 0, 200, 200, 0); //clears the screen
+			delay(400);
+			changeHearts(heartsfull); //display our players hearts
+
+			//start our music once the game starts
+			delay(500);
+				
+			background_tune_notes=my_notes;
+			background_tune_times=my_note_times;
+			background_tune_note_count=5;
+			background_repeat_tune=1;
+				
+			//display our empty arrows to warn user which key they will have to press
+			putImage(5, 0, 8, 8, outLeft, 0, 0);
+			putImage(30, 0, 8, 8, outUp, 0, 0);
+			putImage(90, 0, 8, 8, outLeft, 1, 0);
+			putImage(110, 0, 8, 8, outUp, 0, 1);
+
+			initSound();
 		} // up pressed
 
 
@@ -280,6 +295,7 @@ int main()
 	while(gameStart)
 	{
 
+		printNumber(score, 48, 140, 0xff, 0);
 		//stickman idle animation logic
 		putImage(50, 50, 32, 32, neutral, 0, 0);
 		delay(300);
@@ -294,30 +310,89 @@ int main()
 		//clears the text for when to hit it
 		fillRectangle(10, 20, 50, 50, 0);
 
-		//arrowmoved vertically set to 0
-		leftmoved= 0;
+		if(speed > 35){
+			speed = 35;
+		}
 		
-		
-
+		if(heartsChanged == 1){
+			checkHearts(hearts);
+			heartsChanged = 0;
+			if(hearts == 0){
+				fillRectangle(0, 0, 200, 200, 0); //clears the screen
+				printTextX2("You Lose", 20, 80, RGBToWord(255, 0, 0), 0);
+				delay(400);
+				delay(100);
+				if(players == 1){
+					scores[player] = score;
+					delay(100);
+					gameStart = 0;
+					gameOver = 1;
+				}
+				else if(players == 2){
+					scores[player] = score;
+					delay(100);
+					
+					printTextX2("Player 2 Turn", 10, 80, RGBToWord(100, 0xff, 0), 0);
+					player=2;
+					speed = 15;
+					score = 0;
+					hearts = 3;
+					players = 3;
+				}
+				else{
+					scores[player] = score;
+					gameStart = 0;
+					gameOver = 1;
+				}
+			}
+		}
 
 		
 		if(checkArr(leftY) == 1){
 			leftY = y;
+			hearts-=1;
+			heartsChanged = 1;
 		}
 		if(checkArr(upY) == 1){
 			rightY = y;
+			hearts-=1;
+			heartsChanged = 1;
 		}
 		if(checkArr(rightY) == 1){
 			rightY = y;
+			hearts-=1;
+			heartsChanged = 1;
 		}
 		if(checkArr(downY) == 1){
 			rightY = y;
+			hearts-=1;
+			heartsChanged = 1;
 		}
 		
 
 		if ((GPIOB->IDR & (1 << 4))==0) // right pressed
 		{					
-			hitPose(right);
+			if (rightY < 8)
+			{
+				hitPose(right);
+				score+=10;
+				printTextX2("NICE", 40, 120, RGBToWord(0xff,0xff,0xff), 0);
+				delay(300);
+				fillRectangle(40, 110, 50, 40, 0);
+				rightY = y;
+				ledOff(blueBit);
+				delay(200);
+				speed+=5;
+				
+			}
+			else{
+				//if the arrow is not inside the outline arrow then fail the dance move
+				hitPose(fail);
+				rightY = y;
+				delay(200);
+				hearts-=1;
+				heartsChanged = 1;
+			}
 		}
 		if ((GPIOB->IDR & (1 << 5))==0) // left pressed
 		{
@@ -326,12 +401,14 @@ int main()
 			if (leftY < 8)
 			{
 				hitPose(left);
+				score+=10;
 				printTextX2("NICE", 40, 120, RGBToWord(0xff,0xff,0xff), 0);
 				delay(300);
 				fillRectangle(40, 110, 50, 40, 0);
 				leftY = y;
 				ledOff(redBit);
 				delay(200);
+				speed+=5;
 				
 			}
 			else{
@@ -339,35 +416,76 @@ int main()
 				hitPose(fail);
 				leftY = y;
 				delay(200);
+				hearts-=1;
+				heartsChanged = 1;
 			}				
 		}
 		if ( (GPIOA->IDR & (1 << 11)) == 0) // down pressed
 		{
-			hitPose(down);
+			if (downY < 8)
+			{
+				hitPose(down);
+				score+=10;
+				printTextX2("NICE", 40, 120, RGBToWord(0xff,0xff,0xff), 0);
+				delay(300);
+				fillRectangle(40, 110, 50, 40, 0);
+				downY = y;
+				ledOff(orangeBit);
+				delay(200);
+				speed+=5;
+				
+			}
+			else{
+				//if the arrow is not inside the outline arrow then fail the dance move
+				hitPose(fail);
+				downY = y;
+				delay(200);
+				hearts-=1;
+				heartsChanged = 1;
+			}
 		}
 		if ( (GPIOA->IDR & (1 << 8)) == 0) // up pressed
 		{			
-			hitPose(up);
+			if (upY < 8)
+			{
+				hitPose(up);
+				score+=10;
+				printTextX2("NICE", 40, 120, RGBToWord(0xff,0xff,0xff), 0);
+				delay(300);
+				fillRectangle(40, 110, 50, 40, 0);
+				upY = y;
+				ledOff(greenBit);
+				delay(200);
+				speed+=5;
+				
+			}
+			else{
+				//if the arrow is not inside the outline arrow then fail the dance move
+				hitPose(fail);
+				upY = y;
+				delay(200);
+				hearts-=1;
+				heartsChanged = 1;
+			}
 		}
 
 		
 		//spawns the left arrow (testing)
 		putImage(leftX, leftY, 8, 8, arLeft, 0, 0);
 		
-		leftY = leftY -15;
+		leftY = leftY - speed;
 		arrowMoved(leftX, leftY, oldLy, arLeft);
 		oldLy = leftY;
 		
 		
-		//leftmoved = 1;
-		//delay(100);
-
+		
+		/*
 		putImage(rightX, rightY, 8, 8, arRight, 0, 0);
 		
-		rightY = rightY -15;
+		rightY = rightY - speed;
 		arrowMoved(rightX, rightY, oldRy, arRight);
 		oldRy = rightY;
-	
+		*/
 
 		/*
 		if (leftmoved)
@@ -390,8 +508,65 @@ int main()
 
 		delay(50);
 	}
-	return 0;
+
+	if (gameOver == 1){
+		background_repeat_tune = 0;
+		stopSound();
+		initSound();
+		
+		fillRectangle(0, 0, 200, 200, 0); //clears the screen
+		printText("Final scores", 05, 20, RGBToWord(0xff,0xff,0), 0);
+		playNote(C3);
+		delay(300);
+		printTextX2("Player 1: ", 15, 30, RGBToWord(0xff,0xff,0), 0);
+		playNote(C3);
+		delay(300);
+		printNumberX2(scores[1], 40, 50, 0xff, 0);
+		
+		if(players > 1){	
+			printTextX2("Player 2: ", 15, 70, RGBToWord(0xff,0xff,0), 0);
+			playNote(C3);
+			delay(300);
+			printNumberX2(scores[2], 40, 90, 0xff, 0);
+
+			delay(1000);
+			fillRectangle(0, 0, 200, 200, 0);
+			if(scores[2] > scores[1]){
+				printTextX2("Player 2 Win!", 40, 120, RGBToWord(0,0xff,0), 0);
+			}
+			else{
+				printTextX2("Player 1 Win!", 40, 120, RGBToWord(0,0xff,0), 0);
+			}
+		}
+		stopSound();
+		delay(500);
+		printText("Press ^", 40, 140, RGBToWord(0xff, 0xff, 0xff), 0);
+		printText("for main menu", 20, 150, RGBToWord(0xff, 0xff, 0xff), 0);
+		
+		menuPrompt = 1;
+		gameOver = 0;
+		
+	}
+	while (menuPrompt){
+		if ( (GPIOA->IDR & (1 << 8)) == 0){
+			printText("LOL", 40, 50, RGBToWord(0xff, 0xff, 0xff), 0);
+			
+			gameOver =0;
+			gameStart =0;
+			
+			fillRectangle(0, 0, 200, 200, 0);
+			delay(100);
+			
+			menu = 1;
+			delay(400);
+
+		} // up pressed	
+	}
+	
+
+	//return 0;
 }
+
 
 void hitPose(const uint16_t inp[]){
 	
@@ -429,9 +604,6 @@ void arrowMoved (int arX, int arY, uint16_t oldy, const uint16_t inp[]){
 			
 	}
 }
-void arrowPress(inp){
-
-}
 
 int checkArr(int arrowY){
 	if(arrowY < 0){
@@ -454,6 +626,21 @@ void changeHearts(const uint16_t inp[]){
 	putImage(50, 90, 32, 16, inp, 0, 0);
 }
 
+void checkHearts (int num){
+	if(num == 2){
+		changeHearts(hearts2);
+	}
+	else if(num==1){
+		changeHearts(hearts1);
+	}
+	else if(num==0){
+		changeHearts(hearts0);
+		delay(100);
+		changeHearts(heartsflash);
+		delay(100);
+		changeHearts(hearts0);
+	}
+}
 
 //function to handle turning the LEDs on
 void ledOn(int inp){
