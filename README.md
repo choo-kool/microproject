@@ -18,5 +18,5 @@ As for the code, honestly it's a little messy. The code we were initially provid
 
 Unfortunately, this realization only came towards the end of the deadline, causing the horrible mess of code with many global variables, unnecessary variable overriding, and the remains of the flag and while loop logic. It's not all bad though as I believe that this has strengthened my understanding on the importance of scope, polymorphism, components and code reusability.
 
-Below is a temporary video of the game's functionality, I will hopefully remember to change this video with an improved one, better highlighting the features and fucntionality:
+Below is a temporary video of the game's functionality, I hope to soon update this video, better highlighting the features and fucntionality:
 https://youtu.be/i5xD1u-D6Gs?si=W-gAFQ3rtShHjG-O
